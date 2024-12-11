@@ -2,21 +2,29 @@
 <html>  
 <head>  
   <meta charset="UTF-8">  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
   <script src="https://d3js.org/d3.v7.min.js"></script>  
+  <script src="https://cdn.tailwindcss.com"></script>  
+  <title>Singapore District Atlas</title>  
   <style>  
     body {  
-      background: linear-gradient(135deg, #2d1810, #3c1f1a, #2d1810);  
+      background: linear-gradient(135deg, #1a1c2c, #2d1810, #1a1c2c);  
       margin: 0;  
       min-height: 100vh;  
-      font-family: Arial, sans-serif;  
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;  
+    }  
+    
+    .glass-effect {  
+      background: rgba(255, 235, 225, 0.03);  
+      backdrop-filter: blur(8px);  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
     }  
     
     .map-container {  
-      background: rgba(255, 235, 225, 0.03);  
       border-radius: 20px;  
       padding: 20px;  
       margin: 20px;  
-      border: 1px solid rgba(255, 160, 122, 0.2);  
+      transition: all 0.3s ease;  
     }  
     
     .map-title {  
@@ -27,74 +35,143 @@
       text-align: center;  
       font-size: 2.5rem;  
       margin: 20px 0;  
+      text-shadow: 0 0 30px rgba(255, 107, 74, 0.3);  
     }  
     
     #tooltip {  
       position: absolute;  
-      background: rgba(45, 24, 16, 0.95);  
+      background: rgba(26, 28, 44, 0.95);  
       color: #fff;  
       border-radius: 12px;  
-      padding: 10px;  
+      padding: 15px;  
       display: none;  
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
+      font-size: 0.9rem;  
+      max-width: 200px;  
     }  
     
-    button {  
+    .control-button {  
       background: linear-gradient(45deg, #ff6b4a, #ffa07a);  
       border: none;  
       color: white;  
       padding: 10px 20px;  
       border-radius: 10px;  
       cursor: pointer;  
+      transition: all 0.3s ease;  
+      font-weight: 500;  
+    }  
+    
+    .control-button:hover {  
+      transform: translateY(-2px);  
+      box-shadow: 0 4px 15px rgba(255, 107, 74, 0.3);  
+    }  
+    
+    .control-panel {  
+      position: fixed;  
+      top: 20px;  
+      left: 20px;  
+      background: rgba(26, 28, 44, 0.9);  
+      padding: 20px;  
+      border-radius: 15px;  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
+      backdrop-filter: blur(8px);  
+    }  
+    
+    .search-input {  
+      background: rgba(255, 255, 255, 0.05);  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
+      color: #ffdcd1;  
+      padding: 10px;  
+      border-radius: 10px;  
+      width: 200px;  
+      margin-right: 10px;  
+      transition: all 0.3s ease;  
+    }  
+    
+    .search-input:focus {  
+      outline: none;  
+      border-color: #ff6b4a;  
+      box-shadow: 0 0 10px rgba(255, 107, 74, 0.2);  
     }  
     
     #legend {  
       position: fixed;  
       bottom: 20px;  
       right: 20px;  
-      background: rgba(45, 24, 16, 0.9);  
-      padding: 15px;  
+      background: rgba(26, 28, 44, 0.9);  
+      padding: 20px;  
       border-radius: 15px;  
       color: #ffdcd1;  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
+      backdrop-filter: blur(8px);  
+    }  
+    
+    .district-path {  
+      transition: all 0.3s ease;  
+    }  
+    
+    .district-path:hover {  
+      filter: brightness(1.2);  
     }  
 
-    .search-box {  
+    .stats-panel {  
       position: fixed;  
       top: 20px;  
-      left: 20px;  
-      background: rgba(45, 24, 16, 0.9);  
-      padding: 10px;  
+      right: 20px;  
+      background: rgba(26, 28, 44, 0.9);  
+      padding: 20px;  
       border-radius: 15px;  
+      color: #ffdcd1;  
+      border: 1px solid rgba(255, 160, 122, 0.2);  
+      backdrop-filter: blur(8px);  
     }  
 
-    input {  
-      background: rgba(255, 255, 255, 0.05);  
-      border: 1px solid rgba(255, 160, 122, 0.2);  
-      color: #ffdcd1;  
-      padding: 8px;  
-      border-radius: 10px;  
+    @keyframes pulse {  
+      0% { transform: scale(1); }  
+      50% { transform: scale(1.05); }  
+      100% { transform: scale(1); }  
+    }  
+
+    .highlight {  
+      animation: pulse 1s ease-in-out;  
     }  
   </style>  
 </head>  
 <body>  
   <h1 class="map-title">Singapore District Atlas</h1>  
   
-  <div class="search-box">  
-    <input id="search-input" type="text" placeholder="Search district...">  
-    <button id="search-btn">Search</button>  
+  <div class="control-panel">  
+    <div class="mb-4">  
+      <input id="search-input" class="search-input" type="text" placeholder="Search district...">  
+      <button id="search-btn" class="control-button">Search</button>  
+    </div>  
+    <div class="flex gap-2">  
+      <button id="zoom-in" class="control-button">+</button>  
+      <button id="zoom-out" class="control-button">-</button>  
+      <button id="reset-btn" class="control-button">Reset</button>  
+    </div>  
   </div>  
   
-  <button style="position:fixed; bottom:20px; left:20px;" id="reset-btn">Reset View</button>  
+  <div class="stats-panel">  
+    <h3 class="text-lg font-bold mb-2">Statistics</h3>  
+    <div id="stats-content">  
+      <p>Total Districts: <span id="total-districts">0</span></p>  
+      <p>Total Population: <span id="total-population">0</span></p>  
+      <p>Avg Population: <span id="avg-population">0</span></p>  
+    </div>  
+  </div>  
   
-  <div class="map-container">  
+  <div class="map-container glass-effect">  
     <svg width="1000" height="600"></svg>  
   </div>  
   
   <div id="tooltip"></div>  
   
   <div id="legend">  
-    <strong>POPULATION DENSITY</strong>  
+    <strong class="block mb-2">POPULATION DENSITY</strong>  
     <svg width="180" height="20"></svg>  
-    <div style="display:flex; justify-content:space-between">  
+    <div class="flex justify-between mt-2">  
       <span>0</span>  
       <span id="max-value">0</span>  
     </div>  
@@ -103,16 +180,28 @@
   <script>  
     const svg = d3.select("svg");  
     const width = 1000, height = 600;  
+    let currentTransform = d3.zoomIdentity;  
 
     Promise.all([d3.json("sgmap.json"), d3.csv("population2023.csv")]).then(data => {  
         const mapData = data[0].features;  
         const popData = data[1];  
 
+        // Data processing  
         mapData.forEach(d => {  
             const subzone = popData.find(e => e.Subzone.toUpperCase() === d.properties.Name.toUpperCase());  
             d.popdata = subzone ? parseInt(subzone.Population) : 0;  
         });  
 
+        // Update statistics  
+        const totalDistricts = mapData.length;  
+        const totalPopulation = d3.sum(mapData, d => d.popdata);  
+        const avgPopulation = Math.round(totalPopulation / totalDistricts);  
+
+        d3.select("#total-districts").text(totalDistricts.toLocaleString());  
+        d3.select("#total-population").text(totalPopulation.toLocaleString());  
+        d3.select("#avg-population").text(avgPopulation.toLocaleString());  
+
+        // Map setup  
         const projection = d3.geoMercator()  
             .center([103.851959, 1.290270])  
             .fitExtent([[20, 20], [980, 580]], data[0]);  
@@ -121,52 +210,99 @@
 
         const colorScale = d3.scaleSequential()  
             .domain([0, d3.max(mapData, d => d.popdata)])  
-            .interpolator(d3.interpolate("#ffe5d9", "#ff6b4a"));  
+            .interpolator(d3.interpolateRgbBasis(["#ffe5d9", "#ff9b7b", "#ff6b4a"]));  
 
+        // Draw districts  
         svg.selectAll("path")  
             .data(mapData)  
             .enter()  
             .append("path")  
             .attr("d", path)  
+            .attr("class", "district-path")  
             .attr("fill", d => colorScale(d.popdata))  
+            .attr("stroke", "rgba(255,255,255,0.2)")  
+            .attr("stroke-width", 0.5)  
             .on("mouseover", (e, d) => {  
+                d3.select(e.target)  
+                    .attr("stroke", "#fff")  
+                    .attr("stroke-width", 2);  
+                
                 d3.select("#tooltip")  
                     .style("display", "block")  
                     .style("left", (e.pageX + 10) + "px")  
                     .style("top", (e.pageY - 10) + "px")  
-                    .html(`${d.properties.Name}<br>Population: ${d.popdata.toLocaleString()}`);  
+                    .html(`  
+                        <div class="font-bold mb-1">${d.properties.Name}</div>  
+                        <div>Population: ${d.popdata.toLocaleString()}</div>  
+                        <div>Density Rank: ${mapData.sort((a,b) => b.popdata - a.popdata)  
+                                                .findIndex(item => item === d) + 1}/${mapData.length}</div>  
+                    `);  
             })  
-            .on("mouseout", () => {  
+            .on("mouseout", (e) => {  
+                d3.select(e.target)  
+                    .attr("stroke", "rgba(255,255,255,0.2)")  
+                    .attr("stroke-width", 0.5);  
                 d3.select("#tooltip").style("display", "none");  
             });  
 
+        // Zoom behavior  
         const zoom = d3.zoom()  
             .scaleExtent([1, 8])  
             .on("zoom", (e) => {  
+                currentTransform = e.transform;  
                 svg.selectAll("path").attr("transform", e.transform);  
             });  
 
         svg.call(zoom);  
 
-        d3.select("#search-btn").on("click", () => {  
+        // Search functionality  
+        d3.select("#search-btn").on("click", searchDistrict);  
+        d3.select("#search-input").on("keyup", (e) => {  
+            if (e.key === "Enter") searchDistrict();  
+        });  
+
+        function searchDistrict() {  
             const query = document.getElementById("search-input").value.trim().toUpperCase();  
-            const match = mapData.find(d => d.properties.Name.toUpperCase() === query);  
+            const match = mapData.find(d => d.properties.Name.toUpperCase().includes(query));  
+            
             if (match) {  
                 const [[x0, y0], [x1, y1]] = path.bounds(match);  
-                svg.transition().duration(750).call(  
-                    zoom.transform,  
-                    d3.zoomIdentity  
-                        .translate(width/2, height/2)  
-                        .scale(Math.min(8, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height)))  
-                        .translate(-(x0 + x1)/2, -(y0 + y1)/2)  
-                );  
+                const targetTransform = d3.zoomIdentity  
+                    .translate(width/2, height/2)  
+                    .scale(Math.min(8, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height)))  
+                    .translate(-(x0 + x1)/2, -(y0 + y1)/2);  
+
+                svg.transition()  
+                    .duration(750)  
+                    .call(zoom.transform, targetTransform);  
+
+                // Highlight the found district  
+                svg.selectAll("path")  
+                    .filter(d => d === match)  
+                    .classed("highlight", true)  
+                    .attr("stroke", "#fff")  
+                    .attr("stroke-width", 2)  
+                    .transition()  
+                    .duration(2000)  
+                    .attr("stroke", "rgba(255,255,255,0.2)")  
+                    .attr("stroke-width", 0.5);  
             }  
+        }  
+
+        // Control buttons  
+        d3.select("#zoom-in").on("click", () => {  
+            svg.transition().duration(300).call(zoom.scaleBy, 1.5);  
+        });  
+
+        d3.select("#zoom-out").on("click", () => {  
+            svg.transition().duration(300).call(zoom.scaleBy, 0.667);  
         });  
 
         d3.select("#reset-btn").on("click", () => {  
             svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);  
         });  
 
+        // Legend  
         const legendScale = d3.scaleLinear()  
             .domain([0, d3.max(mapData, d => d.popdata)])  
             .range([0, 180]);  
@@ -174,6 +310,31 @@
         const legendAxis = d3.axisBottom(legendScale)  
             .ticks(5)  
             .tickFormat(d3.format(",.0f"));  
+
+        const legendSvg = d3.select("#legend svg");  
+        
+        const gradient = legendSvg.append("defs")  
+            .append("linearGradient")  
+            .attr("id", "legend-gradient")  
+            .attr("x1", "0%")  
+            .attr("x2", "100%");  
+
+        gradient.append("stop")  
+            .attr("offset", "0%")  
+            .attr("stop-color", "#ffe5d9");  
+
+        gradient.append("stop")  
+            .attr("offset", "50%")  
+            .attr("stop-color", "#ff9b7b");  
+
+        gradient.append("stop")  
+            .attr("offset", "100%")  
+            .attr("stop-color", "#ff6b4a");  
+
+        legendSvg.append("rect")  
+            .attr("width", 180)  
+            .attr("height", 10)  
+            .style("fill", "url(#legend-gradient)");  
 
         d3.select("#max-value").text(d3.max(mapData, d => d.popdata).toLocaleString());  
     });  
